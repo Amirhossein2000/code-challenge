@@ -1,0 +1,58 @@
+version: "3.7"
+
+networks:
+  app:
+
+services:
+  redis:
+    networks:
+      - app
+    image: redis
+    command: redis-server --requirepass redisPass
+    ports:
+      - 6379:6379
+
+  db:
+    networks:
+      - app
+    image: mysql:5.7
+    volumes:
+      - ./init.sql:/data/application/init.sql
+      - ./.mysql-data/db:/var/lib/mysql
+    command: --init-file /data/application/init.sql
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+
+  server:
+    networks:
+      - app
+    image: go-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - 7070:7070
+    environment:
+      REDIS_ADDRESS: redis:6379
+      REDIS_PASSWORD: redisPass
+
+  writer:
+    networks:
+      - app
+    image: go-writer
+    build:
+      context: ./writer
+      dockerfile: Dockerfile
+    environment:
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: root
+      MYSQL_ADDRESS: db:3306
+      MYSQL_DB_NAME: appDB
+      REDIS_ADDRESS: redis:6379
+      REDIS_PASSWORD: redisPass
